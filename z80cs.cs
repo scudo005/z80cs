@@ -52,25 +52,51 @@ namespace z80cs
         private byte[] AddressSpace = new byte[0x10000]; // this always reserves 64k of RAM. lol
         readonly CultureInfo ci = new("en-us");
 
+        // TODO: create an assembler that can assemble Z80 machine code on the fly, so the user can type instructions and data and automatically have them written to memory.
+        // Also, a way to load compiled Z80 programs from a file would be nice.
+
         /// <summary>
         /// Creates a new CPU object instance and starts it.
         /// </summary>
         public Z80_CPU()
         {
             Reset();
-            while (true)
+            Boolean exit = false;
+            while (!exit)
             {
-                Console.WriteLine("Press N to advance to the next instruction, I to insert data in the address space and V to view current memory contents. ");
+                Console.WriteLine("Press N to advance to the next instruction, I to insert data in the address space, J to jump to a memory location, R to check the registers, V to view current memory contents, and Q to quit. ");
                 String s = Console.ReadLine()!; // we say the string can't be null
-                if (s.Equals("N")) // TODO: add some form of IRQ management.
-                    NextInstruction();
-                else if(s.Equals("I")){
-                    InsertDataInstrInAddrSpc();
+                char c = Char.Parse(s.ToLower());
+                switch (c)
+                {
+                    case 'n':
+                         NextInstruction();
+                         break;
+                    case 'i':
+                        InsertDataInstrInAddrSpc();
+                        break;
+                    case 'v':
+                        CheckMemoryState();
+                        break;
+                    case 'j':
+                        Console.WriteLine("Insert the jump location: ");
+                        ushort tempPC = (ushort)Int16.Parse(Console.ReadLine()); // oh god
+                        if (tempPC > 0xFFFF)
+                            Console.WriteLine("Illegal address."); // this should never happen.
+                        else
+                            ProgCounterReg = tempPC;
+                        break;
+                    case 'r':
+                        RegisterStatus();
+                        break;
+                    case 'q':
+                        exit = true;
+                        Console.WriteLine("Closing program.");
+                        break;
+                    default:
+                        Console.WriteLine("Unknown command.");
+                        break;
                 }
-                else if(s.Equals("V")){
-                    CheckMemoryState();
-                }
-                
             }
         }
 
@@ -198,7 +224,7 @@ namespace z80cs
                     break;
                 default:
                     Console.WriteLine(
-                        "Unknown opcode {0} occurred at: {1}",
+                        "Unknown opcode 0x{0} occurred at: 0x{1}",
                         opcode.ToString("X", ci),
                         ProgCounterReg.ToString("X", ci)
                     );
@@ -240,7 +266,6 @@ namespace z80cs
         {
             Console.WriteLine("nop");
             ProgCounterReg++;
-            RegisterStatus();
         }
 
         /// <summary>
@@ -519,16 +544,28 @@ namespace z80cs
         /// This function lets the user see the contents of the address space.
         /// </summary>
         private void CheckMemoryState(){
-            ushort altpc = 0;
+            /*ushort altpc = 0;
             ushort start = 0;
-            while (altpc < 0x0200){
-                Console.WriteLine("addr: {0}", altpc.ToString("X", ci));
-                for (altpc = start; altpc < 0x0020; altpc++){
-                Console.Write(AddressSpace[altpc] + " ");
-            }
+            while (altpc < 0x0020){
+                Console.WriteLine("addr: 0x{0}", altpc.ToString("X", ci));
+                for (altpc = start; altpc < 0x0010; altpc++){
+                    Console.Write("0x{0} ", AddressSpace[altpc].ToString("X", ci));
+                    altpc++;
+                }
+                altpc++;
             //Console.WriteLine("\t{0} - {1}",start.ToString("X", ci),altpc.ToString("X", ci));
-            start = altpc;
-            }
+            // start = altpc;
+            altpc++;
+            }*/ // this doesn't work
+
+            Console.WriteLine("addr: 0x{0}\t val: 0x{1}",ProgCounterReg.ToString("X", ci),AddressSpace[ProgCounterReg].ToString("X", ci));
+            Console.WriteLine("addr: 0x{0}\t val: 0x{1}",ProgCounterReg+1.ToString("X", ci),AddressSpace[ProgCounterReg+1].ToString("X", ci));
+            Console.WriteLine("addr: 0x{0}\t val: 0x{1}",ProgCounterReg+2.ToString("X", ci),AddressSpace[ProgCounterReg+2].ToString("X", ci));
+            Console.WriteLine("addr: 0x{0}\t val: 0x{1}",ProgCounterReg+3.ToString("X", ci),AddressSpace[ProgCounterReg+3].ToString("X", ci));
+            Console.WriteLine("addr: 0x{0}\t val: 0x{1}",ProgCounterReg+4.ToString("X", ci),AddressSpace[ProgCounterReg+4].ToString("X", ci));
+            Console.WriteLine("addr: 0x{0}\t val: 0x{1}",ProgCounterReg+5.ToString("X", ci),AddressSpace[ProgCounterReg+5].ToString("X", ci));
+            Console.WriteLine("addr: 0x{0}\t val: 0x{1}",ProgCounterReg+6.ToString("X", ci),AddressSpace[ProgCounterReg+6].ToString("X", ci));
+            Console.WriteLine("addr: 0x{0}\t val: 0x{1}",ProgCounterReg+7.ToString("X", ci),AddressSpace[ProgCounterReg+7].ToString("X", ci));
         }
 
         /// <summary>
