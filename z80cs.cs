@@ -592,11 +592,11 @@ namespace z80cs
         private void InsertDataInstrInAddrSpc(){
             Console.WriteLine("Insert the address to insert the data: ");
                     String a = Console.ReadLine()!;
-                    int addr = 0x0000;
+                    ushort addr = 0x0000;
                      try
                         {
-                            addr = Int32.Parse(a);
-                            Console.WriteLine("Address: {0}" + addr.ToString("X", ci));
+                            addr = (ushort)Int16.Parse(a);
+                            Console.WriteLine("Address: 0x{0}" + addr.ToString("X", ci));
                         }
                         catch (FormatException)
                         {
@@ -608,11 +608,11 @@ namespace z80cs
                     else{
                         Console.WriteLine("Insert a byte to be put in memory: ");
                         String d = Console.ReadLine()!;
-                        int data = 0x0000;
+                        byte data = 0x00;
                      try
                         {
-                            addr = Int32.Parse(d);
-                            Console.WriteLine("Data: {0}", data.ToString("X", ci));
+                            data = byte.Parse(d);
+                            Console.WriteLine("Data: 0x{0}", data.ToString("X", ci));
                         }
                         catch (FormatException)
                         {
@@ -623,7 +623,7 @@ namespace z80cs
                     }
                     else{
                         AddressSpace[addr] = (byte)data;
-                        Console.WriteLine("Inserted byte {0} at location {1}.", data.ToString("X", ci), addr.ToString("X", ci));
+                        Console.WriteLine("Inserted byte 0x{0} at location 0x{1}.", data.ToString("X", ci), addr.ToString("X", ci));
                     }
 
                     }
