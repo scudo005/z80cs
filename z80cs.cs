@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Collections;
 using System.Globalization;
 
 namespace z80cs
@@ -49,7 +49,7 @@ namespace z80cs
             IFF1, // IFF1 is for disabling maskable interrupts: if it's 1, IRQs are enabled.
             IFF2;
         public const ushort NMIVector = 0x0066;
-        private byte[] AddressSpace = new byte[0xFFFF]; // this always reserves 64k of RAM. lol
+        private byte[] AddressSpace = new byte[0x10000]; // this always reserves 64k of RAM. lol
         readonly CultureInfo ci = new("en-us");
 
         /// <summary>
@@ -60,13 +60,17 @@ namespace z80cs
             Reset();
             while (true)
             {
-                if (!NMITrigger) // TODO: add some form of IRQ management.
+                Console.WriteLine("Press N to advance to the next instruction, I to insert data in the address space and V to view current memory contents. ");
+                String s = Console.ReadLine()!; // we say the string can't be null
+                if (s.Equals("N")) // TODO: add some form of IRQ management.
                     NextInstruction();
-                else
-                {
-                    ManageNMI();
-                    NextInstruction();
+                else if(s.Equals("I")){
+                    InsertDataInstrInAddrSpc();
                 }
+                else if(s.Equals("V")){
+                    CheckMemoryState();
+                }
+                
             }
         }
 
@@ -109,9 +113,9 @@ namespace z80cs
             IFF1 = true; // maskable interrupts are enabled by default
             IFF2 = false;
             IMF = 0; // mode 0 because I say so
-            for (int i = 0; i < 0xFFFF; i++)
+            for (int i = 0; i < 0x10000; i++) // 0x10000 is there to prevent an off by one error.
             {
-                AddressSpace[i] = (byte)(0x02);
+                AddressSpace[i] = (byte)(0xFF);
             }
         }
 
@@ -125,7 +129,7 @@ namespace z80cs
         /// <param name="lowerReg">The 8-bit register that occupies the lower 8 bits of our register pair.</param>
         /// </summary>
         /// <remarks>Use only valid register pairs (AF, BC, DE, HL).</remarks>
-        private void UpdatePairedRegFrom8Bit(ushort registerPair, byte upperReg, byte lowerReg)
+        private static void UpdatePairedRegFrom8Bit(ushort registerPair, byte upperReg, byte lowerReg)
         {
             registerPair = (ushort)(upperReg); // the bits of the upper register go into the register pair
             registerPair = (ushort)(registerPair << 8); // the 8 bits of the upper register are shifted into the upper 16 bits of the register pair
@@ -139,7 +143,7 @@ namespace z80cs
         /// <param name="lowerReg">The 8-bit register that occupies the lower 8 bits of our register pair.</param>
         /// </summary>
         /// <remarks>Use only valid register pairs (AF, BC, DE, HL).</remarks>
-        private void UpdateUnpairedRegFrom16Bit(ushort registerPair, byte upperReg, byte lowerReg)
+        private static void UpdateUnpairedRegFrom16Bit(ushort registerPair, byte upperReg, byte lowerReg)
         {
             lowerReg = (byte)(registerPair); // we simply discard the upper 16 bits
             upperReg = (byte)(registerPair >> 8); // the upper register is stored in the upper 8 bits of the register pair
@@ -150,21 +154,20 @@ namespace z80cs
         /// </summary>
         private void NextInstruction()
         {
-            if ((ProgCounterReg + 1) > 0xFFFF)
+            if ((ProgCounterReg + 1) > 0x10000)
             {
                 Console.WriteLine("overflow pc");
                 ProgCounterReg = 0x0000;
-                // Environment.Exit(-1);
             }
 
             byte opcode = AddressSpace[ProgCounterReg];
             switch (opcode)
             {
                 case 0x00:
-                    nop();
+                    Nop();
                     break;
                 case 0x01:
-                    ld16bc(FetchData16Bit());
+                    Ld16bc(FetchData16Bit());
                     break;
                 case 0x02:
                     LdARegToBCPointer(FetchData16Bit());
@@ -195,7 +198,7 @@ namespace z80cs
                     break;
                 default:
                     Console.WriteLine(
-                        "Unknown opcode 0x{0} occurred at: 0x{1}",
+                        "Unknown opcode {0} occurred at: {1}",
                         opcode.ToString("X", ci),
                         ProgCounterReg.ToString("X", ci)
                     );
@@ -219,18 +222,21 @@ namespace z80cs
         /// </summary>
         private ushort FetchData16Bit()
         {
-            ushort ret = AddressSpace[ProgCounterReg++];
-            ret = (ushort)(ret << 8); // we shift the first 8 bits to the right // can't we just say ret << 8 instead of reassigning the value?
-            ret = AddressSpace[ProgCounterReg++]; // this fits into the lower 8 bits
+            ushort ret = 0x0000;
+            byte lowerByte = AddressSpace[ProgCounterReg++];
+            byte highByte = AddressSpace[ProgCounterReg++]; // this is LE so we have to fetch backwards
+            ret = highByte;
+            ret = (ushort)(ret << 8); // we shift the first 8 bits to the left // can't we just say ret << 8 instead of reassigning the value?
+            ret = (ushort)(ret & lowerByte); // we AND the bits together to pack our 2 bytes together
             return ret;
         }
 
-        /// Here start the instructions' implementations. Note that writing to the console is essential to the program not running too fast and overflowing PC immediately.
+        // Here start the instructions' implementations. Note that writing to the console is essential to the program not running too fast and overflowing PC immediately.
 
         /// <summary>
         /// No operation, only increases PC.
         /// </summary>
-        private void nop()
+        private void Nop()
         {
             Console.WriteLine("nop");
             ProgCounterReg++;
@@ -241,7 +247,7 @@ namespace z80cs
         /// Loads a 16 bit value into register BC.
         /// <param name="operand">The 16 bit value to be loaded.</param>
         /// </summary>
-        private void ld16bc(ushort operand)
+        private void Ld16bc(ushort operand)
         {
             Console.WriteLine("ld bc, " + operand);
             BCReg = operand;
@@ -281,24 +287,24 @@ namespace z80cs
         private void IncBReg()
         {
             Console.WriteLine("inc b");
-            SetAddSubFlagState(0x00);
+            SetAddSubFlagState(false);
             if ((BReg + 1) > 0xFF)
             {
                 BReg = 0;
-                SetParityOverfState(0x01); // note to self: remind to take care of the carry.
+                SetParityOverfState(true); // note to self: remind to take care of the carry.
                 UpdatePairedRegFrom8Bit(BCReg, BReg, CReg);
                 ProgCounterReg++;
             }
             else if ((BReg + 1) == 0)
             {
                 BReg = 0;
-                SetZeroFlagState(0x01);
+                SetZeroFlagState(true);
                 UpdateUnpairedRegFrom16Bit(BCReg, BReg, CReg);
                 ProgCounterReg++;
             }
             else if ((BReg + 1) < 0){
                 BReg++;
-                SetSignFlagState(0x01);
+                SetSignFlagState(true);
                 UpdatePairedRegFrom8Bit(BCReg, BReg, CReg);
                 ProgCounterReg++;
             }
@@ -320,20 +326,20 @@ namespace z80cs
             if ((BReg - 1) > 0xFF)
             {
                 BReg = 0;
-                SetParityOverfState(0x01); // yes
+                SetParityOverfState(true); // yes
                 UpdatePairedRegFrom8Bit(BCReg, BReg, CReg);
                 ProgCounterReg++;
             }
             else if ((BReg - 1) == 0)
             {
                 BReg = 0;
-                SetZeroFlagState(0x01);
+                SetZeroFlagState(true);
                 UpdateUnpairedRegFrom16Bit(BCReg, BReg, CReg);
                 ProgCounterReg++;
             }
             else if ((BReg - 1) < 0){
                 BReg--;
-                SetSignFlagState(0x01);
+                SetSignFlagState(true);
                 UpdatePairedRegFrom8Bit(BCReg, BReg, CReg);
                 ProgCounterReg++;
             }
@@ -367,17 +373,17 @@ namespace z80cs
         {
             Console.WriteLine("rlca");
             AReg = (byte)(AReg << 1);
-            SetHalfCarryState(0x00);
-            SetAddSubFlagState(0x00);
+            SetHalfCarryState(false);
+            SetAddSubFlagState(false);
             if ((AReg & (1 << 0x80)) != 0) // we take the MSB/rightmost bit of the A register and we copy its value to the carry flag.
             {
-                SetCarryFlagState(0x01);
-                // AReg = (byte)(((byte)(AReg) & ~(byte)(0x01)) | (0x01 & (byte)(0x01))); // we set bit 0 corresponding to bit 7's value.
+                SetCarryFlagState(true);
+                 // we have to set bit 0 corresponding to bit 7's value.
                 // didn't the leftshift operation already do this?
             }
             else
             {
-                SetCarryFlagState(0x00);
+                SetCarryFlagState(false);
                 // AReg = (byte)(((byte)(AReg) & ~(byte)(0x01)) | (0x00 & (byte)(0x01)));
             }
             ProgCounterReg++;
@@ -404,10 +410,10 @@ namespace z80cs
         private void AddHLBC()
         {
             Console.WriteLine("add hl, bc");
-            SetAddSubFlagState(0x00);
+            SetAddSubFlagState(false);
             if ((HLReg + BCReg) > 0xFFFF) // this gets valued as an int and not as an ushort, because C#.
             {
-                SetCarryFlagState(0x01);
+                SetCarryFlagState(true);
                 HLReg = 0;
             }
             else
@@ -417,15 +423,6 @@ namespace z80cs
 
             ProgCounterReg++;
             RegisterStatus();
-        }
-
-        // these functions should get a status byte of which the LSB/leftmost bit needs to be set to enable the flag and unset to disable it.
-        // also these random ass 0x?? bytes represent the bitmask of the several set flags
-        private void SetCarryFlagState(byte status)
-        {
-            FReg = (byte)(((byte)(FReg) & ~(byte)(0x01)) | (status & (byte)(0x01))); // WTF??? In theory this should set our carry flag tho.
-            // https://stackoverflow.com/questions/127027/how-can-i-check-my-byte-flag-verifying-that-a-specific-bit-is-at-1-or-0#127062
-            // I bet this is easier to do in silicon design.
         }
 
         // ld a, (bc)
@@ -440,33 +437,52 @@ namespace z80cs
             ProgCounterReg++;
         }
 
-        private void SetAddSubFlagState(byte status) // needed for BCD mode
+
+        // these functions should get a status byte of which the LSB/leftmost bit needs to be set to enable the flag and unset to disable it.
+        private void SetCarryFlagState(bool toggle)
         {
-            FReg = (byte)(((byte)(FReg) & ~(byte)(0x02)) | (status & (byte)(0x02)));
+            BitArray ba = new(FReg);
+            ba[7] = toggle; // we set the last bit
+            FReg = ConvertToByte(ba);
+        }
+
+        private void SetAddSubFlagState(bool toggle) // needed for BCD mode
+        {
+            BitArray ba = new(FReg);
+            ba[6] = toggle;
+            FReg = ConvertToByte(ba);
             // setting this flag should not be needed, since we don't have to deal with dumb silicon but with smart silicon.
         }
 
-        private void SetParityOverfState(byte status)
+        private void SetParityOverfState(bool toggle)
         {
-            FReg = (byte)(((byte)(FReg) & ~(byte)(0x04)) | (status & (byte)(0x04)));
+            BitArray ba = new(FReg);
+            ba[5] = toggle;
+            FReg = ConvertToByte(ba);
             // reminder to citizens: failure to understand usage of the parity/overflow flag for IO communication with IN and OUT instructions
             // is ground for immediate off-world relocation.
         }
 
-        private void SetHalfCarryState(byte status)
+        private void SetHalfCarryState(bool toggle)
         {
-            FReg = (byte)(((byte)(FReg) & ~(byte)(0x10)) | (status & (byte)(0x10)));
+            BitArray ba = new(FReg);
+            ba[3] = toggle;
+            FReg = ConvertToByte(ba);
             // setting this flag should NOT be needed as we don't have a 4 bit ALU on modern CPUs. Might be worth revisiting for accuracy.
         }
 
-        private void SetZeroFlagState(byte status)
+        private void SetZeroFlagState(bool toggle)
         {
-            FReg = (byte)(((byte)(FReg) & ~(byte)(0x40)) | (status & (byte)(0x40)));
+            BitArray ba = new(FReg);
+            ba[1] = toggle;
+            FReg = ConvertToByte(ba);
         }
 
-        private void SetSignFlagState(byte status)
+        private void SetSignFlagState(bool toggle)
         {
-            FReg = (byte)(((byte)(FReg) & ~(byte)(0x80)) | (status & (byte)(0x80)));
+            BitArray ba = new(FReg);
+            ba[0] = toggle;
+            FReg = ConvertToByte(ba);
         }
 
         private void ManageNMI()
@@ -499,18 +515,84 @@ namespace z80cs
             Console.WriteLine("pc: " + ProgCounterReg);
         }
 
+        /// <summary>
+        /// This function lets the user see the contents of the address space.
+        /// </summary>
         private void CheckMemoryState(){
             ushort altpc = 0;
             ushort start = 0;
             while (altpc < 0x0200){
+                Console.WriteLine("addr: {0}", altpc.ToString("X", ci));
                 for (altpc = start; altpc < 0x0020; altpc++){
                 Console.Write(AddressSpace[altpc] + " ");
             }
-            Console.WriteLine("\t{0} - {1}",start.ToString("X", ci),altpc.ToString("X", ci));
+            //Console.WriteLine("\t{0} - {1}",start.ToString("X", ci),altpc.ToString("X", ci));
             start = altpc;
             }
-            
-            
+        }
+
+        /// <summary>
+        /// Converts a System.Collections.BitArray to a byte, in a bad way I can understand.
+        /// </summary>
+        /// <remark> A poor man's solution. https://stackoverflow.com/questions/560123/convert-from-bitarray-to-byte </remark>
+        private static byte ConvertToByte(BitArray bits)
+        {
+            if (bits.Count != 8)
+            {
+                throw new ArgumentException("illegal number of bits");
+            }
+
+            byte b = 0;
+            if (bits.Get(7)) b++;
+            if (bits.Get(6)) b += 2;
+            if (bits.Get(5)) b += 4;
+            if (bits.Get(4)) b += 8;
+            if (bits.Get(3)) b += 16;
+            if (bits.Get(2)) b += 32;
+            if (bits.Get(1)) b += 64;
+            if (bits.Get(0)) b += 128;
+            return b;
+        }
+
+        private void InsertDataInstrInAddrSpc(){
+            Console.WriteLine("Insert the address to insert the data: ");
+                    String a = Console.ReadLine()!;
+                    int addr = 0x0000;
+                     try
+                        {
+                            addr = Int32.Parse(a);
+                            Console.WriteLine("Address: {0}" + addr.ToString("X", ci));
+                        }
+                        catch (FormatException)
+                        {
+                            Console.WriteLine($"Unable to parse '{a}'");
+                        }
+                    if (addr > 0xFFFF){
+                        Console.WriteLine("Illegal address.");
+                    }
+                    else{
+                        Console.WriteLine("Insert a byte to be put in memory: ");
+                        String d = Console.ReadLine()!;
+                        int data = 0x0000;
+                     try
+                        {
+                            addr = Int32.Parse(d);
+                            Console.WriteLine("Data: {0}", data.ToString("X", ci));
+                        }
+                        catch (FormatException)
+                        {
+                            Console.WriteLine($"Unable to parse '{d}'");
+                        }
+                    if (data > 0xFF){
+                        Console.WriteLine("Please write one byte at a time.");
+                    }
+                    else{
+                        AddressSpace[addr] = (byte)data;
+                        Console.WriteLine("Inserted byte {0} at location {1}.", data.ToString("X", ci), addr.ToString("X", ci));
+                    }
+
+                    }
         }
     }
+    
 }
