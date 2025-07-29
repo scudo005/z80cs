@@ -285,10 +285,19 @@ namespace z80cs
             ProgCounterReg++;
         }
 
-        private void addHLBC() // docs says we should take care of the carry, but a 16 bit operation doesn't care about an 8 bit carry!
+        private void addHLBC()
         {
-            HLReg = (ushort)(HLReg + BCReg);
             SetAddSubFlagState(0x00);
+            if ((HLReg + BCReg) > 0xFFFF) // this gets valued as an int and not as an ushort, because C#.
+            {
+                SetCarryFlagState(0x01);
+                HLReg = 0;
+            }
+            else
+            {
+                HLReg = (ushort)(HLReg + BCReg);
+            }
+
             ProgCounterReg++;
         }
 
