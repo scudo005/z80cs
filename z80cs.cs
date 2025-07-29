@@ -190,6 +190,9 @@ namespace z80cs
                 case 0x09:
                     AddHLBC();
                     break;
+                case 0x0A:
+                    LdARegFromBCPointer();
+                    break;
                 default:
                     Console.WriteLine(
                         "Unknown opcode 0x{0} occurred at: 0x{1}",
@@ -278,6 +281,7 @@ namespace z80cs
         private void IncBReg()
         {
             Console.WriteLine("inc b");
+            SetAddSubFlagState(0x00);
             if ((BReg + 1) > 0xFF)
             {
                 BReg = 0;
@@ -290,6 +294,12 @@ namespace z80cs
                 BReg = 0;
                 SetZeroFlagState(0x01);
                 UpdateUnpairedRegFrom16Bit(BCReg, BReg, CReg);
+                ProgCounterReg++;
+            }
+            else if ((BReg + 1) < 0){
+                BReg++;
+                SetSignFlagState(0x01);
+                UpdatePairedRegFrom8Bit(BCReg, BReg, CReg);
                 ProgCounterReg++;
             }
             else
@@ -319,6 +329,12 @@ namespace z80cs
                 BReg = 0;
                 SetZeroFlagState(0x01);
                 UpdateUnpairedRegFrom16Bit(BCReg, BReg, CReg);
+                ProgCounterReg++;
+            }
+            else if ((BReg - 1) < 0){
+                BReg--;
+                SetSignFlagState(0x01);
+                UpdatePairedRegFrom8Bit(BCReg, BReg, CReg);
                 ProgCounterReg++;
             }
             else
@@ -412,7 +428,19 @@ namespace z80cs
             // I bet this is easier to do in silicon design.
         }
 
-        private void SetAddSubFlagState(byte status)
+        // ld a, (bc)
+        /// <summary>
+        /// Loads the A register with the memory contents pointed by register BC.
+        /// </summary>
+
+        private void LdARegFromBCPointer()
+        {
+            Console.WriteLine("ld a, [" + BCReg + "]");
+            AReg = AddressSpace[BCReg];
+            ProgCounterReg++;
+        }
+
+        private void SetAddSubFlagState(byte status) // needed for BCD mode
         {
             FReg = (byte)(((byte)(FReg) & ~(byte)(0x02)) | (status & (byte)(0x02)));
             // setting this flag should not be needed, since we don't have to deal with dumb silicon but with smart silicon.
