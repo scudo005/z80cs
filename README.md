@@ -5,7 +5,7 @@ Current progress:
 
 ![progress](progress.jpg)
 
-Base instructions: 94/256
+Base instructions: 110/256
 
 Misc. instructions (0xED): 0/56
 
