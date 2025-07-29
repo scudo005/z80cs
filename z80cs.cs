@@ -103,9 +103,9 @@ namespace z80cs
         }
 
         // these update methods must be called every time A, F, H, L, D, E, B, C registers are used to not desync the state of AF, HL, DE, BC and vice versa
-        // TODO: is this machine big endian or little endian?
+        // TODO: this machine is little endian, invert bytes
 
-        private void UpdatePairedRegFrom8Bit(ushort registerPair, byte upperReg, byte lowerReg)
+        private void UpdatePairedRegFrom8Bit(ushort registerPair, byte upperReg, byte lowerReg) // this has correct endianness
         {
             registerPair = (ushort)(upperReg); // the bits of the upper Register go into the register pair
             registerPair = (ushort)(registerPair << 8); // the 8 bits of the upper register are shifted into the upper 16 bits of the register pair
