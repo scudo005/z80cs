@@ -146,7 +146,7 @@ namespace z80cs
         private static void UpdateUnpairedRegFrom16Bit(ushort registerPair, byte upperReg, byte lowerReg)
         {
             lowerReg = (byte)(registerPair); // we simply discard the upper 16 bits
-            upperReg = (byte)(registerPair >> 8); // the upper register is stored in the upper 8 bits of the register pair
+            upperReg = (byte)(registerPair >>> 8); // the upper register is stored in the upper 8 bits of the register pair
         }
 
         /// <summary>
@@ -226,7 +226,7 @@ namespace z80cs
             byte lowerByte = AddressSpace[ProgCounterReg++];
             byte highByte = AddressSpace[ProgCounterReg++]; // this is LE so we have to fetch backwards
             ret = highByte;
-            ret = (ushort)(ret << 8); // we shift the first 8 bits to the left // can't we just say ret << 8 instead of reassigning the value?
+            ret <<= 8; // we shift the first 8 bits to the left
             ret = (ushort)(ret & lowerByte); // we AND the bits together to pack our 2 bytes together
             return ret;
         }
@@ -372,7 +372,7 @@ namespace z80cs
         private void Rlca()
         {
             Console.WriteLine("rlca");
-            AReg = (byte)(AReg << 1);
+            AReg <<= 1; // left shift + assignment
             SetHalfCarryState(false);
             SetAddSubFlagState(false);
             if ((AReg & (1 << 0x80)) != 0) // we take the MSB/rightmost bit of the A register and we copy its value to the carry flag.
