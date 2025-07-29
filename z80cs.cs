@@ -165,11 +165,8 @@ namespace z80cs
         /// <remarks>Use only valid register pairs (AF, BC, DE, HL).</remarks>
         private void UpdatePairedRegFrom8Bit(ushort registerPair, byte upperReg, byte lowerReg)
         {
-            Console.WriteLine("registerpair 0x{0}, hireg 0x{1}, loreg {2}", registerPair.ToString("X", ci), upperReg.ToString("X"
             registerPair = (ushort)(upperReg); // the bits of the upper register go into the register pair
-            Console.WriteLine("registerpair 0x{0}, hireg 0x{1}, loreg {2}", registerPair.ToString("X", ci), upperReg.ToString("X"
             registerPair = (ushort)(registerPair << 8); // the 8 bits of the upper register are shifted into the upper 16 bits of the register pair
-            Console.WriteLine("registerpair 0x{0}, hireg 0x{1}, loreg {2}", registerPair.ToString("X", ci), upperReg.ToString("X"
             registerPair = (ushort)(registerPair + lowerReg); // and now we put in the contents of the lower register
         }
 
