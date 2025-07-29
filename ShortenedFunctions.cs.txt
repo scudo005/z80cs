@@ -1,0 +1,51 @@
+﻿using System.Diagnostics;
+
+namespace z80cs;
+/// <summary>
+///  This is experimental code to simplify the main emulator program, so we only have 1 function that does 16-bit decrements, 1 function for 8-bit additions and so on.
+/// </summary>
+public class ShortenedFunctions
+{
+    private RegisterPair AddR8Carry(byte reg1, byte reg2) // this can be made completely static.
+    {
+        byte carryFlag = Convert.ToByte(CheckCarryFlagState());
+        switch (reg1 + reg2)
+        {
+            case > 0xFF:
+                reg1 = carryFlag;
+                SetParityOverflowState(true);
+                break;
+            case 0:
+                SetZeroFlagState(true);
+                reg1 = carryFlag;
+                break;
+            default:
+                reg1 += reg2;
+                break;
+        }
+        ProgCounterReg++;
+        return new RegisterPair(0, reg1, reg2); // bad.
+    } // we can recycle existing adc functions to call this one instead and update the register values.
+    unsafe private RegisterPair AddR8CarryFromHLPtr(byte reg1, byte reg2, ushort HLReg, byte[] *addrspc) // this can be made completely static.
+    {
+        byte carryFlag = Convert.ToByte(CheckCarryFlagState());
+        Debug.Assert(addrspc != null, nameof(addrspc) + " != null");
+        byte[]* tempcopy = &addrspc[HLReg]; // per jetbrains rider questa variabile non é mai stata definita. ma?
+        switch ((reg1 + &addrspc[HLReg]))
+        {
+            case > 0xFF:
+                reg1 = carryFlag;
+                SetParityOverflowState(true);
+                break;
+            case 0:
+                SetZeroFlagState(true);
+                reg1 = carryFlag;
+                break;
+            default:
+                reg1 += reg2;
+                break;
+        }
+        ProgCounterReg++;
+        return new RegisterPair(0, reg1, reg2); // bad.
+    }
+}
