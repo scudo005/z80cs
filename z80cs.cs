@@ -470,5 +470,19 @@ namespace z80cs
             Console.WriteLine(" l': " + LRegSec);*/
             Console.WriteLine("pc: " + ProgCounterReg);
         }
+
+        private void CheckMemoryState(){
+            ushort altpc = 0;
+            ushort start = 0;
+            while (altpc < 0x0200){
+                for (altpc = start; altpc < 0x0020; altpc++){
+                Console.Write(AddressSpace[altpc] + " ");
+            }
+            Console.WriteLine("\t{0} - {1}",start.ToString("X", ci),altpc.ToString("X", ci));
+            start = altpc;
+            }
+            
+            
+        }
     }
 }
