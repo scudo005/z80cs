@@ -80,7 +80,15 @@ namespace z80cs
                         break;
                     case 'j':
                         Console.WriteLine("Insert the jump location: ");
-                        ushort tempPC = (ushort)Int16.Parse(Console.ReadLine()); // oh god
+                        ushort tempPC = 0xFFFF;
+                        try
+                        {
+                            tempPC = (ushort)Int16.Parse(Console.ReadLine()); // oh god
+                        }
+                        catch (System.Exception)
+                        {
+                            Console.WriteLine("Error parsing tempPC.");
+                        }
                         if (tempPC > 0xFFFF)
                             Console.WriteLine("Illegal address."); // this should never happen.
                         else
@@ -291,7 +299,6 @@ namespace z80cs
             Console.WriteLine("[bc] is now " + AddressSpace[BCReg] + " with bc = " + BCReg);
             UpdateUnpairedRegFrom16Bit(BCReg, BReg, CReg);
             ProgCounterReg++;
-            RegisterStatus();
         }
 
         /// <summary>
@@ -303,7 +310,6 @@ namespace z80cs
             BCReg++;
             UpdateUnpairedRegFrom16Bit(BCReg, BReg, CReg);
             ProgCounterReg++;
-            RegisterStatus();
         }
 
         /// <summary>
@@ -339,7 +345,6 @@ namespace z80cs
                 UpdatePairedRegFrom8Bit(BCReg, BReg, CReg);
                 ProgCounterReg++;
             }
-            RegisterStatus();
         }
 
         /// <summary>
@@ -374,7 +379,6 @@ namespace z80cs
                 UpdatePairedRegFrom8Bit(BCReg, BReg, CReg);
                 ProgCounterReg++;
             }
-            RegisterStatus();
         }
 
         /// <summary>
@@ -387,7 +391,6 @@ namespace z80cs
             BReg = operand;
             UpdatePairedRegFrom8Bit(BCReg, BReg, CReg);
             ProgCounterReg++;
-            RegisterStatus();
         }
 
         /// <summary>
@@ -412,7 +415,6 @@ namespace z80cs
                 // AReg = (byte)(((byte)(AReg) & ~(byte)(0x01)) | (0x00 & (byte)(0x01)));
             }
             ProgCounterReg++;
-            RegisterStatus();
         }
 
         /// <summary>
@@ -426,7 +428,6 @@ namespace z80cs
             AFRegSec = AFCopy;
             // (AFRegSec, AFReg) = (AFReg, AFRegSec); // VS Code suggests we do this: I say it's incomprehensible.
             ProgCounterReg++;
-            RegisterStatus();
         }
 
         /// <summary>
@@ -445,9 +446,7 @@ namespace z80cs
             {
                 HLReg = (ushort)(HLReg + BCReg);
             }
-
             ProgCounterReg++;
-            RegisterStatus();
         }
 
         // ld a, (bc)
@@ -510,7 +509,7 @@ namespace z80cs
             FReg = ConvertToByte(ba);
         }
 
-        private void ManageNMI()
+        private void ManageNMI() // "manage"
         {
             ProgCounterReg = NMIVector;
         }
@@ -578,7 +577,6 @@ namespace z80cs
             {
                 throw new ArgumentException("illegal number of bits");
             }
-
             byte b = 0;
             if (bits.Get(7)) b++;
             if (bits.Get(6)) b += 2;
