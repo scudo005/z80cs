@@ -52,6 +52,16 @@ namespace z80cs
         public Z80_CPU()
         {
             Reset();
+            while (true)
+            {
+                if (!NMITrigger) // TODO: add some form of IRQ management.
+                    NextInstruction();
+                else
+                {
+                    ManageNMI();
+                    NextInstruction();
+                }
+            }
         }
 
         public void Reset()
@@ -136,6 +146,12 @@ namespace z80cs
                     break;
                 case 0x07:
                     rlca();
+                    break;
+                case 0x08:
+                    exchangeAFWithAFSec();
+                    break;
+                case 0x09:
+                    addHLBC();
                     break;
                 default:
                     Console.WriteLine(
@@ -258,6 +274,21 @@ namespace z80cs
                 SetCarryFlagState(0x00);
                 // AReg = (byte)(((byte)(AReg) & ~(byte)(0x01)) | (0x00 & (byte)(0x01)));
             }
+            ProgCounterReg++;
+        }
+
+        private void exchangeAFWithAFSec()
+        {
+            ushort AFCopy = AFReg;
+            AFReg = AFRegSec;
+            AFRegSec = AFCopy;
+            ProgCounterReg++;
+        }
+
+        private void addHLBC() // docs says we should take care of the carry, but a 16 bit operation doesn't care about an 8 bit carry!
+        {
+            HLReg = (ushort)(HLReg + BCReg);
+            SetAddSubFlagState(0x00);
             ProgCounterReg++;
         }
 
