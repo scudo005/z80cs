@@ -163,10 +163,13 @@ namespace z80cs
         /// <param name="lowerReg">The 8-bit register that occupies the lower 8 bits of our register pair.</param>
         /// </summary>
         /// <remarks>Use only valid register pairs (AF, BC, DE, HL).</remarks>
-        private static void UpdatePairedRegFrom8Bit(ushort registerPair, byte upperReg, byte lowerReg)
+        private void UpdatePairedRegFrom8Bit(ushort registerPair, byte upperReg, byte lowerReg)
         {
+            Console.WriteLine("registerpair 0x{0}, hireg 0x{1}, loreg {2}", registerPair.ToString("X", ci), upperReg.ToString("X"
             registerPair = (ushort)(upperReg); // the bits of the upper register go into the register pair
+            Console.WriteLine("registerpair 0x{0}, hireg 0x{1}, loreg {2}", registerPair.ToString("X", ci), upperReg.ToString("X"
             registerPair = (ushort)(registerPair << 8); // the 8 bits of the upper register are shifted into the upper 16 bits of the register pair
+            Console.WriteLine("registerpair 0x{0}, hireg 0x{1}, loreg {2}", registerPair.ToString("X", ci), upperReg.ToString("X"
             registerPair = (ushort)(registerPair + lowerReg); // and now we put in the contents of the lower register
         }
 
@@ -177,10 +180,11 @@ namespace z80cs
         /// <param name="lowerReg">The 8-bit register that occupies the lower 8 bits of our register pair.</param>
         /// </summary>
         /// <remarks>Use only valid register pairs (AF, BC, DE, HL).</remarks>
-        private static void UpdateUnpairedRegFrom16Bit(ushort registerPair, byte upperReg, byte lowerReg)
+        private static RegisterPair UpdateUnpairedRegFrom16Bit(ushort registerPair, byte upperReg, byte lowerReg)
         {
             lowerReg = (byte)(registerPair); // we simply discard the upper 16 bits
-            upperReg = (byte)(registerPair >>> 8); // the upper register is stored in the upper 8 bits of the register pair
+            upperReg = (byte)((registerPair - upperReg) >> 8); // the upper register is stored in the upper 8 bits of the register pair
+            return new RegisterPair(registerPair, lowerReg, upperReg);
         }
 
         /// <summary>
@@ -190,7 +194,6 @@ namespace z80cs
         {
             if ((ProgCounterReg + 1) > 0x10000)
             {
-                Console.WriteLine("overflow pc");
                 ProgCounterReg = 0x0000;
             }
 
@@ -284,7 +287,9 @@ namespace z80cs
         {
             Console.WriteLine("ld bc, " + operand);
             BCReg = operand;
-            UpdateUnpairedRegFrom16Bit(BCReg, BReg, CReg); // B and C have synced contents
+            RegisterPair p = UpdateUnpairedRegFrom16Bit(BCReg, BReg, CReg);
+            BReg = p.GetHighByte();
+            CReg = p.GetLowByte();
             ProgCounterReg++;
         }
 
@@ -629,5 +634,32 @@ namespace z80cs
                     }
         }
     }
+<<<<<<< HEAD
     
+=======
+
+
+    class RegisterPair(ushort regPair, byte lowByte, byte highByte)
+    {
+        private ushort regPair = regPair;
+        private byte lowByte = lowByte;
+        private byte highByte = highByte;
+
+        public ushort GetRegPair()
+        {
+            return regPair;
+        }
+
+        public byte GetLowByte()
+        {
+            return lowByte;
+        }
+
+        public byte GetHighByte()
+        {
+            return highByte;
+        }
+    }
+
+>>>>>>> 3e46f49 (ok this is better)
 }
