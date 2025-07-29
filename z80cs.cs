@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Reflection.Metadata;
+﻿using System;
 
 namespace z80cs
 {
